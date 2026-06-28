@@ -70,17 +70,6 @@ The SGAM-DETR computational pipeline involves:
 3.  **Relational Reasoning:** A multi-head graph self-attention network models long-range dependencies across contiguous physical structures.
 4.  **Graph Unpooling & Channel Concatenation:** Node features are unpooled back to pixel space and fused with residual backbone representations using channel-concatenated mixing convolutions before going into the hybrid encoder.
 
-## 8. Citations
-If you use this code or our paper, please cite:
-```bibtex
-@article{hong2026sgam,
-  title={SGAM-DETR: a superpixel-guided graph attention network for unstructured environmental waste detection on autonomous systems},
-  author={Hong, Sunyan and Shen, Yang and He, Banghua and Tang, Jun and Zhu, Shihua and Wen, Yadong and He, Jun and Chi, Haiyang},
-  journal={PeerJ Computer Science},
-  year={2026}
-}
-```
-
-## 9. License & Contribution Guidelines
+## 8. License & Contribution Guidelines
 *   **License:** This repository is licensed under the Apache 2.0 License. See the `LICENSE` file for more details.
 *   **Contributions:** We welcome contributions, bug reports, and pull requests to improve the efficiency and applicability of SGAM-DETR. Please open an issue first to discuss your proposed changes.
