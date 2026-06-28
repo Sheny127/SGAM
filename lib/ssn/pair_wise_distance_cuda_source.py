@@ -59,11 +59,6 @@ torch::Tensor forward_cuda(
     
     auto options = torch::TensorOptions().dtype(pixel_features.dtype()).device(torch::kCUDA);
     
-    // -------------------------------------------------------------
-    // 关键修复: 初始化为 1e6 (无穷大)，而不是 0
-    // 这样无效的边界邻居距离即为 1e6，亲和度为 -1e6，
-    // torch.max 就绝不会选择边界外的无效邻居，防止索引越界。
-    // -------------------------------------------------------------
     auto dist_matrix = torch::full({9, h, w}, 1e6, options);
 
     int threads = CUDA_NUM_THREADS;
