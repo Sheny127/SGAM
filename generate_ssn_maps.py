@@ -7,7 +7,7 @@ import math
 from tqdm import tqdm
 
 # =================================================================
-# 1. 核心算法工具 (已修复稀疏矩阵计算)
+# 1. Core Algorithm Utilities (Sparse matrix computation fixed)
 # =================================================================
 
 def pairwise_dist(pixel_features, spixel_features, init_label_map, num_spixels_width, num_spixels_height):
@@ -80,7 +80,7 @@ def sparse_ssn_iter(pixel_features, num_spixels, n_iter):
     
     num_spixels_width = int(math.sqrt(num_spixels * width / height))
     num_spixels_height = int(num_spixels / num_spixels_width)
-    actual_nspix = num_spixels_width * num_spixels_height # 重新计算实际的 spix 数
+    actual_nspix = num_spixels_width * num_spixels_height # Recalculate actual superpixel count
 
     spixel_features, init_label_map = calc_init_centroid(pixel_features, num_spixels_width, num_spixels_height)
     abs_indices = get_abs_indices(init_label_map, num_spixels_width)
@@ -98,21 +98,21 @@ def sparse_ssn_iter(pixel_features, num_spixels, n_iter):
 
         affinity_matrix = (-dist_matrix).softmax(1)
         
-        # === 修复的更新逻辑 START ===
-        # 1. 构建稀疏矩阵 indices 和 values
+        # === Fixed Update Logic START ===
+        # 1. Construct sparse matrix indices and values
         reshaped_affinity_matrix = affinity_matrix.reshape(-1)
         mask = (abs_indices[1] >= 0) * (abs_indices[1] < actual_nspix)
         
-        # 只取 mask 为 True 的部分
+        # Select only elements where the mask is True
         valid_indices = abs_indices[:, mask]
         valid_values = reshaped_affinity_matrix[mask]
         
-        # 2. 处理 Batch=1 的情况 (降维处理以支持 torch.sparse.mm)
+        # 2. Handle Batch=1 case (dimensionality reduction to support torch.sparse.mm)
         if batch_size == 1:
-            # 去掉 batch 维度， indices 变成 (2, NNZ) -> [spix_idx, pix_idx]
+            # Remove batch dimension; indices become (2, NNZ) -> [spix_idx, pix_idx]
             sp_indices = valid_indices[1:3, :] 
             sp_values = valid_values
-            # 构造稀疏矩阵 (M, N)
+            # Construct a sparse matrix of size (M, N)
             sparse_abs_affinity = torch.sparse_coo_tensor(
                 sp_indices, sp_values, size=(actual_nspix, height*width)
             )
@@ -120,29 +120,29 @@ def sparse_ssn_iter(pixel_features, num_spixels, n_iter):
             # pixel features (1, N, C) -> (N, C)
             feat_dense = pixel_features_flat[0] 
             
-            # 3. 稀疏矩阵乘法 (M, N) @ (N, C) -> (M, C)
+            # 3. Sparse matrix multiplication: (M, N) @ (N, C) -> (M, C)
             new_spixel_feat = torch.sparse.mm(sparse_abs_affinity, feat_dense)
             
-            # 归一化因子
+            # Normalization factor
             normalizer = torch.sparse.sum(sparse_abs_affinity, 1).to_dense().unsqueeze(-1) + 1e-16
             new_spixel_feat = new_spixel_feat / normalizer
             
-            # 还原维度 (M, C) -> (1, C, M) -> (1, M, C) ? 
-            # 注意: spixel_features 期望是 (B, C, M)
-            # new_spixel_feat 是 (M, C)
+            # Restore shape (M, C) -> (1, C, M)
+            # Note: spixel_features is expected to have shape (B, C, M)
+            # new_spixel_feat has shape (M, C)
             spixel_features = new_spixel_feat.t().unsqueeze(0) # (1, C, M)
             
         else:
-            # 如果 B > 1，由于 pytorch 对 batch sparse mm 支持不好，我们直接跳过更新
-            # 保持 spixel_features 不变，只做 assignment
+            # If B > 1, skip feature update due to lack of stable batched sparse mm support in PyTorch.
+            # Keep spixel_features unchanged and perform only assignment.
             pass
-        # === 修复的更新逻辑 END ===
+        # === Fixed Update Logic END ===
 
     hard_labels = get_hard_abs_labels(affinity_matrix, init_label_map, num_spixels_width)
     return None, hard_labels, None
 
 # =================================================================
-# 2. SSNModel 类
+# 2. SSNModel Class
 # =================================================================
 
 def conv_bn_relu(in_c, out_c):
@@ -196,7 +196,7 @@ class SSNModel(nn.Module):
         return torch.cat([feat, x], 1)
 
 # =================================================================
-# 3. 主程序
+# 3. Main Executable Program
 # =================================================================
 
 CONFIG = {
