@@ -7,15 +7,15 @@ from ..utils.sparse_utils import naive_sparse_bmm
 
 def calc_init_centroid(images, num_spixels_width, num_spixels_height):
     """
-    calculate initial superpixels
+    Calculate initial superpixel centroids.
 
     Args:
         images: torch.Tensor
             A Tensor of shape (B, C, H, W)
         spixels_width: int
-            initial superpixel width
+            Initial superpixel width
         spixels_height: int
-            initial superpixel height
+            Initial superpixel height
 
     Return:
         centroids: torch.Tensor
@@ -25,7 +25,7 @@ def calc_init_centroid(images, num_spixels_width, num_spixels_height):
         num_spixels_width: int
             A number of superpixels in each column
         num_spixels_height: int
-            A number of superpixels int each raw
+            A number of superpixels in each row
     """
     batchsize, channels, height, width = images.shape
     device = images.device
@@ -70,9 +70,9 @@ def get_hard_abs_labels(affinity_matrix, init_label_map, num_spixels_width):
 @torch.no_grad()
 def sparse_ssn_iter(pixel_features, num_spixels, n_iter):
     """
-    computing assignment iterations with sparse matrix
-    detailed process is in Algorithm 1, line 2 - 6
-    NOTE: this function does NOT guarantee the backward computation.
+    Computing assignment iterations with sparse matrix.
+    Detailed process is in Algorithm 1, lines 2 - 6.
+    NOTE: this function does NOT guarantee backward computation.
 
     Args:
         pixel_features: torch.Tensor
@@ -82,10 +82,10 @@ def sparse_ssn_iter(pixel_features, num_spixels, n_iter):
         n_iter: int
             A number of iterations
         return_hard_label: bool
-            return hard assignment or not
+            Return hard assignment or not
     """
     height, width = pixel_features.shape[-2:]
-    batch_size = pixel_features.shape[0] # 获取 batch size
+    batch_size = pixel_features.shape[0] # Get batch size
     
     num_spixels_width = int(math.sqrt(num_spixels * width / height))
     num_spixels_height = int(num_spixels / num_spixels_width)
@@ -94,15 +94,15 @@ def sparse_ssn_iter(pixel_features, num_spixels, n_iter):
         calc_init_centroid(pixel_features, num_spixels_width, num_spixels_height)
     abs_indices = get_abs_indices(init_label_map, num_spixels_width)
 
-    # 1. 保存 4D 的 pixel_features，供 PairwiseDistFunction 使用
+    # 1. Keep a 4D copy of pixel_features for PairwiseDistFunction
     pixel_features_4d = pixel_features
 
-    # 2. 原始逻辑：展平 pixel_features 供稀疏矩阵计算使用
+    # 2. Original logic: flatten pixel_features for sparse matrix calculation
     pixel_features = pixel_features.reshape(*pixel_features.shape[:2], -1)
     permuted_pixel_features = pixel_features.permute(0, 2, 1)
 
     for _ in range(n_iter):
-        # 3. 关键修改：传入 4D 的 features 和 Reshape 为 (B, H, W) 的 indices
+        # 3. Key modification: pass 4D features and indices reshaped to (B, H, W)
         dist_matrix = PairwiseDistFunction.apply(
             pixel_features_4d, 
             spixel_features, 
@@ -126,8 +126,8 @@ def sparse_ssn_iter(pixel_features, num_spixels, n_iter):
 
 def ssn_iter(pixel_features, num_spixels, n_iter):
     """
-    computing assignment iterations
-    detailed process is in Algorithm 1, line 2 - 6
+    Computing assignment iterations.
+    Detailed process is in Algorithm 1, lines 2 - 6.
 
     Args:
         pixel_features: torch.Tensor
@@ -137,10 +137,10 @@ def ssn_iter(pixel_features, num_spixels, n_iter):
         n_iter: int
             A number of iterations
         return_hard_label: bool
-            return hard assignment or not
+            Return hard assignment or not
     """
     height, width = pixel_features.shape[-2:]
-    batch_size = pixel_features.shape[0] # 获取 batch size
+    batch_size = pixel_features.shape[0] # Get batch size
 
     num_spixels_width = int(math.sqrt(num_spixels * width / height))
     num_spixels_height = int(num_spixels / num_spixels_width)
@@ -149,15 +149,15 @@ def ssn_iter(pixel_features, num_spixels, n_iter):
         calc_init_centroid(pixel_features, num_spixels_width, num_spixels_height)
     abs_indices = get_abs_indices(init_label_map, num_spixels_width)
 
-    # 1. 保存 4D 的 pixel_features
+    # 1. Keep a 4D copy of pixel_features
     pixel_features_4d = pixel_features
 
-    # 2. 原始逻辑：展平 pixel_features
+    # 2. Original logic: flatten pixel_features
     pixel_features = pixel_features.reshape(*pixel_features.shape[:2], -1)
     permuted_pixel_features = pixel_features.permute(0, 2, 1).contiguous()
 
     for _ in range(n_iter):
-        # 3. 关键修改：传入 4D 的 features 和 Reshape 为 (B, H, W) 的 indices
+        # 3. Key modification: pass 4D features and indices reshaped to (B, H, W)
         dist_matrix = PairwiseDistFunction.apply(
             pixel_features_4d, 
             spixel_features, 
