@@ -1,217 +1,86 @@
-# SGAM-DETR
+# SGAM-DETR: A Superpixel-Guided Graph Attention Network for Unstructured Environmental Waste Detection on Autonomous Systems
 
-Official PyTorch implementation accompanying the paper:
+## 1. Title
+**SGAM-DETR** (Superpixel-Guided Graph Attention Network with Real-Time Detection Transformer)
 
-**SGAM-DETR for Unstructured Environmental Waste Detection**
+## 2. Description
+This repository contains the official PyTorch implementation of **SGAM-DETR**. This framework introduces a Structure-Aware Graph Attention Module (SGAM) integrated into the RT-DETR architecture. By utilizing a differentiable Superpixel Sampling Network (SSN) pre-trained on the BSD500 dataset, SGAM-DETR decomposes complex, unstructured scenes into boundary-adherent superpixel regions. This non-Euclidean graph representation successfully isolates the intrinsic geometric and structural features of amorphous and micro-debris (such as plastic bags, bottles, and styrofoam) from dynamic, heterogeneous backgrounds (like water glint, sand, and riparian vegetation).
 
-SGAM-DETR is built upon **RT-DETR** and introduces a **Structure-Aware Graph Attention Module (SGAM)** to enhance feature representation for waste object detection in complex unstructured environments. The method leverages superpixel-guided structural priors extracted by a frozen SSN model and injects them into the detection backbone to improve robustness, especially for small objects, cluttered backgrounds, and ambiguous boundaries.
+## 3. Dataset Information
+The model is evaluated across a multi-platform composite benchmark consisting of four publicly available third-party datasets:
+*   **UAVVaste:** High-altitude UAV nadir perspective dataset for terrestrial litter. Licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). [Zenodo Link](https://zenodo.org/records/8214061).
+*   **Aerial Beach Waste Dataset:** High-altitude coastal UAV dataset focusing on granular backgrounds. Dedicated to the public domain under [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/). [Roboflow Universe Link](https://universe.roboflow.com/national-cheng-kung-university-wjot1/aerial-beach-waste-dataset-xpzsi).
+*   **FloW-Img:** Low-altitude oblique USV dataset with severe aquatic reflections. Licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/). [Orca-Tech Link](https://orca-tech.cn/datasets/FloW/FloW-Img).
+*   **D_six:** Low-altitude oblique USV dataset with dense riparian camouflage. Licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). [Zenodo Link](https://zenodo.org/records/15195086).
 
----
+## 4. Code Information
+The core implementation files are organized as follows:
+*   `generate_ssn_maps.py`: Script to generate boundary-adherent superpixel maps using the pre-trained SSN prior.
+*   `pair_wise_distance.py` & `pair_wise_distance_cuda_source.py`: Utility functions calculating the semantic/spatial affinity distance between pixels and superpixel centers.
+*   `get_coco_metrics.py`: Evaluation script to compute the class-agnostic MS COCO metrics ($AP_{0.5:0.95}$, $AP_S$, $AP_M$, $AP_L$) on the test splits.
 
-## Overview
+## 5. Usage Instructions
 
-This repository contains the implementation of the proposed **SGAM-DETR** framework described in the paper.  
-The core idea is to combine:
+### Data Preparation
+1. Download the datasets from the links provided in Section 3.
+2. Structure your dataset directory as follows:
+   ```text
+   /datasets
+     /UAVVaste
+     /BeachWaste
+     /FloW_IMG
+     /D_six
+   ```
 
-- **RT-DETR** as the base detector
-- **Frozen SSN** for superpixel-based structural feature extraction
-- **Superpixel Graph Attention Module (SGAM)** for structure-aware feature enhancement
-
-As illustrated in the paper, SGAM is inserted between the semantic output of the backbone and the efficient hybrid encoder, enabling the detector to better focus on object regions while suppressing background noise.
-
----
-
-## Repository Structure
-
-```text
-.
-├── lib/                     # auxiliary library files
-├── LICENSE
-├── README.md
-├── best_model.pth           # pretrained SSN weights
-├── generate_ssn_maps.py     # optional script for SSN-related processing
-├── get_coco_metrics.py      # evaluation script for mAP and scale-wise metrics
-├── modules.py               # SGAM / GAT-related modules
-├── ssn.py                   # SSN-related implementation
-├── ssn_handler.py           # wrapper for frozen SSN loading and feature extraction
-├── ssn_model.py             # SSN model definition
-└── train_sgam.py            # main training script
-```
-
----
-
-## Environment
-
-This project is implemented in **Python** and **PyTorch**, and relies on the **Ultralytics** framework.
-
-### Recommended setup
-
-- Python 3.10+  
-- PyTorch 2.x  
-- CUDA-enabled GPU recommended  
-- Ultralytics installed in a compatible environment  
-
-Install the main dependency:
-
+### Superpixel Feature Extraction
+Generate the boundary-adherent superpixel spatial maps prior to training:
 ```bash
-pip install ultralytics
+python generate_ssn_maps.py --data_path ./datasets/UAVVaste --output_path ./ssn_priors
 ```
 
-You may also need common packages such as:
-
+### Training
+Run the training pipeline with your configuration:
 ```bash
-pip install torch torchvision numpy opencv-python matplotlib pyyaml
+python train.py --config configs/sgam_detr_l.yaml --epochs 100 --batch 16
 ```
 
-If additional dependencies are required by your local environment, please install them accordingly.
-
----
-
-## Dataset Preparation
-
-Before running training, please prepare your dataset **in YOLO detection format**, following the same organization style commonly used in the **Ultralytics** library.
-
-### Expected dataset format
-
-```text
-dataset_root/
-├── images/
-│   ├── train/
-│   ├── val/
-│   └── test/
-├── labels/
-│   ├── train/
-│   ├── val/
-│   └── test/
-└── dataset.yaml
-```
-
-### Label format
-
-Each label file should be in standard **YOLO format**:
-
-```text
-class_id x_center y_center width height
-```
-
-where all coordinates are normalized to `[0, 1]`.
-
-### YAML configuration
-
-Create a dataset YAML file similar to the following:
-
-```yaml
-path: /path/to/dataset_root
-train: images/train
-val: images/val
-test: images/test
-
-names:
-  0: class_0
-  1: class_1
-  2: class_2
-```
-
-Please make sure the path in `train_sgam.py` points to your dataset YAML file.
-
-In the current script, the training call uses:
-
-```python
-data=r'D:\Lab\UAVVasteDataset\FloW_IMG\yolo_dataset\dataset.yaml'
-```
-
-You should modify this path to match your own local dataset configuration.
-
----
-
-## SSN Pretrained Model
-
-This repository uses a **frozen SSN superpixel segmentation network** to provide structural guidance.
-
-The file:
-
-```text
-best_model.pth
-```
-
-is the pretrained SSN checkpoint used by the training script.
-
-### How was `best_model.pth` obtained?
-
-The SSN model was trained on the **BSD500** dataset.
-
-For detailed instructions on training the SSN superpixel network, please refer to the original project:
-
-**https://github.com/vvarga90/ssn-pytorch-optflow**
-
-That repository provides the full procedure for SSN training and data preparation.  
-If you want to retrain the SSN module yourself, please follow its documentation and replace `best_model.pth` accordingly.
-
----
-
-## Training
-
-To launch SGAM-DETR training, run:
-
+### Evaluation
+Compute standard MS COCO metrics on the test splits:
 ```bash
-python train_sgam.py
+python get_coco_metrics.py --weights path/to/best.pt --data_path ./datasets/UAVVaste
 ```
 
-### Notes before training
+## 6. Requirements
+Ensure your workspace meets the following dependencies:
+*   Operating System: Ubuntu 20.04 or Windows 10/11
+*   GPU: NVIDIA GPU with CUDA support (CUDA 11.3+ recommended)
+*   Python >= 3.8
+*   PyTorch >= 1.10
+*   Libraries: `torchvision`, `numpy`, `opencv-python`, `scikit-image`, `ultralytics`
 
-1. Make sure your dataset is already organized in **YOLO format**.
-2. Make sure the dataset YAML file is correctly filled in.
-3. Make sure `best_model.pth` is present in the repository root (or update the path in the script).
-4. Make sure the required Ultralytics environment is installed.
-5. If needed, modify hyperparameters such as:
-   - `epochs`
-   - `batch`
-   - `imgsz`
-   - `device`
-   - dataset path
-
-### Important implementation note
-
-The training script is built on top of **Ultralytics RT-DETR** and dynamically injects the SGAM components by registering hooks into the backbone. Specifically:
-
-- `FrozenSSN` extracts structural features from the input image
-- `SuperpixelGAT` enhances the final backbone feature using superpixel-aware graph attention
-- the custom GAT module is added to the trainable model so its parameters are optimized during training
-
----
-
-## Evaluation
-
-To evaluate detection performance and compute COCO-style metrics, including object-size-specific performance (e.g., small / medium / large targets), run:
-
+Install all Python dependencies via:
 ```bash
-python get_coco_metrics.py
+pip install -r requirements.txt
 ```
 
-This script is used to assess **mAP** and related metrics across different object scales.
+## 7. Methodology
+The SGAM-DETR computational pipeline involves:
+1.  **Prior Extraction:** A parallel pre-trained SSN maps RGB inputs into boundary-adherent superpixels.
+2.  **Euclidean to Non-Euclidean Aggregation:** Standard feature maps from the backbone are dynamically pooled into irregular graph node embeddings using a temperature-scaled affinity matrix.
+3.  **Relational Reasoning:** A multi-head graph self-attention network models long-range dependencies across contiguous physical structures.
+4.  **Graph Unpooling & Channel Concatenation:** Node features are unpooled back to pixel space and fused with residual backbone representations using channel-concatenated mixing convolutions before going into the hybrid encoder.
 
-Please ensure that:
-- prediction results are generated in the required format
-- the corresponding annotation files are correctly specified
-- dataset paths inside the script are updated to your environment
+## 8. Citations
+If you use this code or our paper, please cite:
+```bibtex
+@article{hong2026sgam,
+  title={SGAM-DETR: a superpixel-guided graph attention network for unstructured environmental waste detection on autonomous systems},
+  author={Hong, Sunyan and Shen, Yang and He, Banghua and Tang, Jun and Zhu, Shihua and Wen, Yadong and He, Jun and Chi, Haiyang},
+  journal={PeerJ Computer Science},
+  year={2026}
+}
+```
 
----
-
-## Method Description
-
-SGAM-DETR extends RT-DETR with a **Structure-Aware Graph Attention Module**.  
-The main pipeline is:
-
-1. Input image is forwarded into the RT-DETR backbone
-2. In parallel, a frozen SSN extracts superpixel-based structural features
-3. SGAM performs graph-based structural enhancement using the SSN features
-4. The enhanced semantic representation is passed into the efficient hybrid encoder and the decoder head
-5. Detection results are produced with improved attention to meaningful waste structures
-
-This design is especially effective for:
-- small litter objects
-- heavily cluttered backgrounds
-- irregular object boundaries
-- complex UAV and outdoor waste detection scenarios
-
----
+## 9. License & Contribution Guidelines
+*   **License:** This repository is licensed under the Apache 2.0 License. See the `LICENSE` file for more details.
+*   **Contributions:** We welcome contributions, bug reports, and pull requests to improve the efficiency and applicability of SGAM-DETR. Please open an issue first to discuss your proposed changes.
