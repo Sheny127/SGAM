@@ -86,7 +86,7 @@ If you use this code, the pre-trained weights, or the methodology in your resear
 ```bibtex
 @article{yang2026sgam,
   title={SGAM-DETR: a superpixel-guided graph attention network for unstructured environmental waste detection on autonomous systems},
-  author={Yang, [Your First Name/Last Name] and Chi, Haiyang and He, Banghua and Tang, Jun and Zhu, Shihua and Wen, Yadong},
+  author={Sunyan Hong,Yang Shen,Banghua He*,Jun Tang,Shihua Zhu,Yadong Wen,Jun He,Haiyang Chi*},
   journal={PeerJ Computer Science},
   year={2026}
 }
