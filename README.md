@@ -95,4 +95,3 @@ If you use this code, the pre-trained weights, or the methodology in your resear
 ## 9. License & Contribution Guidelines
 *   **License:** This repository is licensed under the Apache 2.0 License. See the `LICENSE` file for more details.
 *   **Contributions:** We welcome contributions, bug reports, and pull requests to improve the efficiency and applicability of SGAM-DETR. Please open an issue first to discuss your proposed changes.
-```
